@@ -1,8 +1,7 @@
-﻿using System;
+﻿using Rabbit.Uniquators;
+using System;
 using System.Configuration;
 using System.IO;
-using System.Text;
-using Rabbit.Uniquators;
 
 namespace ReadyIds
 {
@@ -12,31 +11,39 @@ namespace ReadyIds
         {
             var idBase = (IdBase)Enum.Parse(typeof(IdBase), ConfigurationManager.AppSettings["IdBase"]);
             var startFrom = int.Parse(ConfigurationManager.AppSettings["StartFrom"]);
-            var sb = new StringBuilder();
+            var idLengthMax = int.Parse(ConfigurationManager.AppSettings["IdLengthMax"]);
 
-            const int idLengthMax = 10;
             var idLength = 0;
             var count = (UInt64)startFrom;
+            StreamWriter streamWriter = null;
 
             while (idLength <= idLengthMax)
             {
                 var newId = NumberToString.Convert(count, idBase);
                 count += 1;
 
-                if (sb.Length == 0)
+                if (idLength != newId.Length)
                 {
+                    if (streamWriter != null)
+                    {
+                        streamWriter.Flush();
+                        streamWriter.Dispose();
+                    }
+
                     idLength = newId.Length;
+                    if (newId.Length > idLength)
+                    {
+                        Console.WriteLine("Done for id length " + idLength);
+                    }
+
+                    var fileName = string.Format("{0}_{1}.txt", idBase, idLength);
+                    streamWriter = new StreamWriter(new FileStream(fileName, FileMode.Create));
                 }
 
-                if (newId.Length > idLength)
+                if (streamWriter != null)
                 {
-                    File.WriteAllText(string.Format("{0}_{1}.txt", idBase, idLength), sb.ToString());
-                    Console.WriteLine("Done for id length " + idLength);
-                    idLength = newId.Length;
-                    sb.Clear();
+                    streamWriter.WriteLine(newId);
                 }
-
-                sb.AppendLine(newId);
             }
 
             Console.WriteLine("Done");
